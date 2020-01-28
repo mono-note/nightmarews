@@ -1,0 +1,24 @@
+{
+  "name": "nightmarews",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "get": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^3.1.1",
+    "cheerio": "^1.0.0-rc.3",
+    "csvjson": "^5.1.0",
+    "download-pdf": "^0.1.6",
+    "eol": "^0.9.1",
+    "fs": "0.0.1-security",
+    "he": "^1.2.0",
+    "html2pug": "^4.0.0",
+    "nightmare": "^3.0.2",
+    "request": "^2.88.0"
+  }
+}
