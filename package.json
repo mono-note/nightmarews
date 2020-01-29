@@ -12,8 +12,9 @@
   "dependencies": {
     "async": "^3.1.1",
     "cheerio": "^1.0.0-rc.3",
+    "colors": "^1.4.0",
     "csvjson": "^5.1.0",
-    "download-pdf": "^0.1.6",
+    "download-file": "^0.1.5",
     "eol": "^0.9.1",
     "fs": "0.0.1-security",
     "he": "^1.2.0",

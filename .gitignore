@@ -107,3 +107,7 @@ dist
 csv/
 module_/
 template/
+_pdf/
+_html/
+_img/
+assets/

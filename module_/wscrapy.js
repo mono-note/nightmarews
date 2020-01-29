@@ -1,15 +1,16 @@
 
 
-var getPDF = require('download-pdf');
-var  he = require('he');
-var request = require('request')
-var fs = require('fs')
-var cheerio = require('cheerio');
+const  he      = require('he');
+const request  = require('request')
+const fs       = require('fs')
+const cheerio  = require('cheerio');
+const Path     = require('path');
+const download = require('download-file')
 
 function getHead(html){
-  const $ = cheerio.load(html);
-  let title = checkUndefined($('title').text());
-  let keywords = checkUndefined($('meta[name="keywords"]').attr('content'));
+  const $         = cheerio.load(html);
+  let title       = checkUndefined($('title').text());
+  let keywords    = checkUndefined($('meta[name="keywords"]').attr('content'));
   let description = checkUndefined($('meta[name="description"]').attr('content'));
   return {title,keywords,description}
 }
@@ -82,11 +83,35 @@ const checkAttr = (attr) => {
 const checkUndefined = (attr) => {
   return typeof attr !== typeof undefined && attr !== false ? attr : ''
 }
+
+function downloadPDF(url, dist) {
+  return new Promise(function (res, rej) {
+    download(url, {directory: dist}, function (err, path) {
+      if (err) rej({url,err});
+      else res(Path.parse(url).base)
+    })
+  })
+}
+const convertToAbosolute = ( path) => {
+  const cleanPath = (path) => {
+    if (path.match(/^(\.*\/)/g)) {
+      path = path.replace(/^(\.*\/)/g, '')
+      return cleanPath(path)
+    } else if (path.match(/^(http|https):\/\/.+\.[a-z]{2,5}/g)) {
+      return path.replace(/^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]/g,'/');
+    } else {
+      return `/${path}`
+    }
+  }
+  return Path.isAbsolute(path) ? path : cleanPath(path)
+}
+
+
 module.exports = {
   clean,
   zeroPad,
   getCSV,
-  getPDF,
+  downloadPDF,
   getIMG,
   getHead,
   writeHTML,
@@ -94,5 +119,6 @@ module.exports = {
   subcontent,
   createDir,
   checkAttr,
-  checkUndefined
+  checkUndefined,
+  convertToAbosolute
 };
