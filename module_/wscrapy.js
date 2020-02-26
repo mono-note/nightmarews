@@ -29,16 +29,33 @@ function clean(str) {
   }
 }
 
-function getIMG(uri, dest,filename=uri.match(/([^\/]+$)/g)[0]) {
+function downloadIMG(uri, dest, filename = uri.match(/([^\/]+$)/g)[0]) {
   let file = filename.match(/\.(?:jpg|jpeg|JPG|png|PNG|gif)/g)?filename:filename+'.jpg'
-  request.head(uri, function (err, res, body) {
-    'content-type:',
-    res.headers['content-type']
-    'content-length:',
-    res.headers['content-length']
-    request(uri).pipe(fs.createWriteStream(dest+file)).on('close', ()=>{});
-  });
+  let imgPath = dest + file
+  return new Promise(function(fullfil,reject){
+    request.head(uri, function (err, res, body) {
+      'content-type:',
+      res.headers['content-type']
+      'content-length:',
+      res.headers['content-length']
+      request(uri).pipe(fs.createWriteStream(imgPath))
+        .on('close', () => {
+          fullfil(imgPath)
+        }).on('error', function (err) {
+          reject({imgPath,err})
+      });
+    });
+  })
 };
+
+function downloadPDF(url, dist) {
+  return new Promise(function (res, rej) {
+    download(url, {directory: dist}, function (err, path) {
+      if (err) rej({url,err});
+      else res(Path.parse(url).base)
+    })
+  })
+}
 
 function zeroPad (d){
   return ("0" + d).slice(-2)
@@ -69,11 +86,8 @@ const createDir = (dirPath) => {
   fs.mkdirSync(process.cwd() + dirPath, {
     recursive: true
   }, (err) => {
-    if (err) {
-      console.error('err', err);
-    } else {
-      console.log('done');
-    }
+    if (err) console.error('err', err);
+    else console.log('done');
   })
 }
 
@@ -84,14 +98,6 @@ const checkUndefined = (attr) => {
   return typeof attr !== typeof undefined && attr !== false ? attr : ''
 }
 
-function downloadPDF(url, dist) {
-  return new Promise(function (res, rej) {
-    download(url, {directory: dist}, function (err, path) {
-      if (err) rej({url,err});
-      else res(Path.parse(url).base)
-    })
-  })
-}
 const convertToAbosolute = ( path) => {
   const cleanPath = (path) => {
     if (path.match(/^(\.*\/)/g)) {
@@ -105,14 +111,16 @@ const convertToAbosolute = ( path) => {
   }
   return Path.isAbsolute(path) ? path : cleanPath(path)
 }
-
+const closeLog =()=>{
+  console.log = function () {}
+}
 
 module.exports = {
   clean,
   zeroPad,
   getCSV,
   downloadPDF,
-  getIMG,
+  downloadIMG,
   getHead,
   writeHTML,
   regHTML,
@@ -120,5 +128,6 @@ module.exports = {
   createDir,
   checkAttr,
   checkUndefined,
-  convertToAbosolute
+  convertToAbosolute,
+  closeLog
 };

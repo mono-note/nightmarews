@@ -10,6 +10,7 @@ const Path      = require('path');
 const partlist  = require('./partlist')
 const colors    = require('colors/safe');
 
+
 /////// PATH CSV for URL
 const csvPath ='./csv/uri.csv'
 
@@ -40,16 +41,25 @@ async.eachSeries(urls, load, function (err, data) {
 })
 
 ////// Var
-
+let root
 const imgPath = 'assets'
 const templateFile = './template/temp.html'
 const dist = 'dist'
 const dPDF = '_pdf'
+const ignoreIMG = [
+  'b_map.gif',
+  'pagetop.gif',
+  'icn_pdf.gif',
+  'get_adobe_reader.png',
+  'icon_news_news.gif',
+  'icon_news_setl.gif'
+]
 
 var doCheerio = function (html, uri) {
-  let list_PDF = []
+  let record_PDF = [],
+    record_IMG = []
   uri = uri.match(/.html/g) ? uri : uri +'index.html';
-  let root = new URL(uri);
+  root = new URL(uri);
   let path = Path.parse(root.pathname)
 
   const $ = cheerio.load(html);
@@ -74,58 +84,87 @@ var doCheerio = function (html, uri) {
     }
   }).get()
 
+  let objHtml = {
+    meta: meta,
+    breadCrumb: breadCrumb
+  }
   ////// Contents
   let contentID = '#main'
+  let tempText = ''
 
   $(`${contentID} *`).each(function(){
 
-    //download image
-    if($(this).is('img')){
-      let src = $(this).attr('src')
-      src = ws.convertToAbosolute(src)
-      let alt = ws.checkUndefined($(this).attr('alt'))
-      let cap = ''
-      //outputIMG
-      let outputIMG = `${imgPath}${path.dir}/`
-      ws.createDir(`/${outputIMG}`)
-      ws.getIMG(`${root.origin}${src}`, outputIMG)
-      console.log(colors.green('IMG DONE:'), Path.parse(src).base);
+    if (true) {
+      // getIMG($(this), record_IMG) //get path image
+      // getPDF($(this), record_PDF) //get path PDF
     }
 
-    if ($(this).is('a')){
-      if(ws.checkAttr($(this).attr('href'))) {
-        let href = $(this).attr('href')
-        href = ws.convertToAbosolute(href)
-        if (href.match(/\.pdf/)) {
-          let pdfPath = Path.parse(href)
-          list_PDF.push(pdfPath)
-        }
-      }
-    }
+    // Content Here
+
 
   })
 
+  // write file
+  exportToFile(tempText, objHtml)
+
   //download PDF
-  Promise.all(list_PDF).then((data) => {
+  Promise.all(record_PDF).then((data) => {
     data.map((pdf)=>{
       let uri =  `${root.origin}${pdf.dir}/${pdf.base}`
       let dist = `${dPDF}${pdf.dir}/`
       ws.downloadPDF(uri, dist)
-        .then(v => console.log(colors.cyan('PDF DONE:'), v))
-        .catch(data => console.log(colors.bgRed(data.url), '\n', colors.bgRed(new Error(data.err))));
+        .then(v => console.info(colors.cyan('PDF DONE:'), v))
+        .catch(data => console.error(colors.bgRed(data.url), '\n', colors.bgRed(new Error(data.err))));
     })
   })
 
-  // write file
-  let dummy = fs.readFileSync(templateFile, 'utf8', () => {})
-  // dummy = dummy.replace(/#######CONTENT/g, tempText)
-  //   .replace(/##title/g, `'${meta.title}'`)
-  //   .replace(/##description/g, `'${meta.description}'`)
-  //   .replace(/##keyword/g, `'${meta.keyword}'`)
-  //   .replace(/##breadCrumb/g, JSON.stringify(breadCrumb))
-  //   .replace(/##navYears/g, JSON.stringify(navYears))
+  //download IMG
+  Promise.all(record_IMG).then((data) => {
+    data.map((img) => {
+      ws.downloadIMG(img.uri, img.dest)
+      .then(v => console.info(colors.green('IMG DONE:'), v))
+      .catch(v => console.error(colors.bgRed(v.url), '\n', colors.bgRed(new Error(v.err))));
+    })
 
-  // ws.createDir(root.pathname)
-  // ws.writeHTML(eol.crlf(dummy), `${root.pathname.slice(1)}/${filename.replace(/\.html/g,'')}.pug`)
+  })
+
 }
 
+const getIMG = (img, record_IMG) => {
+  if (img.is('img')) {
+    let src = img.attr('src')
+    src = ws.convertToAbosolute(src)
+    let alt = ws.checkUndefined(img.attr('alt'))
+    let cap = ''
+    let filename = Path.parse(src).base
+    //outputIMG
+    let outputIMG = `${imgPath}${Path.parse(root.pathname).dir}/`
+    ws.createDir(`/${outputIMG}`)
+    // ignore IMG
+    if (!ignoreIMG.find(ig => ig === filename)) {
+      record_IMG.push({
+        uri: `${root.origin}${src}`,
+        dest: outputIMG
+      })
+    }
+  }
+}
+const getPDF = (pdf, record_PDF) => {
+  if (pdf.is('a') && ws.checkAttr(pdf.attr('href')) && pdf.attr('href').match(/\.pdf/)) {
+    record_PDF.push(Path.parse(ws.convertToAbosolute(pdf.attr('href'))))
+  }
+}
+
+const exportToFile = (tempText, objHtml) => {
+  let dummy = fs.readFileSync(templateFile, 'utf8', () => {})
+  let fileLocation = Path.parse(root.pathname)
+
+  dummy = dummy.replace(/#######CONTENT/g, tempText)
+    .replace(/##title/g, `'${objHtml.meta.title}'`)
+    .replace(/##description/g, `'${objHtml.meta.description}'`)
+    .replace(/##keyword/g, `'${objHtml.meta.keyword}'`)
+
+  ws.createDir(`/${dist}${fileLocation.dir}`)
+  ws.writeHTML(eol.crlf(dummy), `${dist}${root.pathname}`)
+
+}
